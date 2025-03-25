@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BRAVI</title>
+    <style>
+        body {
+            background-color: #800080; /* Colore di sfondo viola */
+            font-family: Arial, sans-serif;
+            color: white; /* Colore del testo bianco */
+            text-align: center;
+            padding: 100px; /* Spaziatura maggiore per il messaggio */
+        }
+
+        h1 {
+            font-size: 48px;
+            margin-bottom: 30px;
+        }
+
+        p {
+            font-size: 24px;
+            margin-top: 20px;
+        }
+
+        .btn-home {
+            background-color: #4CAF50; /* Colore verde per il bottone */
+            color: white;
+            padding: 15px 30px;
+            font-size: 18px;
+            border: none;
+            border-radius: 5px;
+            margin-top: 50px;
+            cursor: pointer;
+        }
+
+        .btn-home:hover {
+            background-color: #45a049; /* Colore al passaggio del mouse */
+        }
+    </style>
+</head>
+<body>
+
+    <h1>BRAVI!</h1>
+    <p>Avete risposto correttamente alla domanda!
+        Se volete ricevere un punto in più, trovate il posto nella foto. Una volta che ci siete davanti, mandateci la foto. Aprite bene gli occhi perché non è semplice da trovare! 
+    </p>    
+    <img src="posto.jpg" class="responsive-img" alt="Immagine adattiva">
+
+    <script>
+    window.addEventListener("load", function () {
+        function makeImageResponsive(img) {
+            img.style.width = "100%";
+            img.style.height = "auto";
+        }
+    
+        // Seleziona tutte le immagini con una classe specifica
+        const images = document.querySelectorAll(".responsive-img");
+        images.forEach(makeImageResponsive);
+    
+        // Opzionale: aggiorna le dimensioni al ridimensionamento della finestra
+        window.addEventListener("resize", function () {
+            images.forEach(makeImageResponsive);
+        });
+    });
+    </script>
+    
+
+
+    <button class="btn-home" onclick="window.location.href = 'caccia.html';">Torna alla pagina principale</button>
+
+</body>
+</html>

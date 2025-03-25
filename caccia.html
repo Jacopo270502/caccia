@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Domanda bonus</title>
+    <style>
+        body {
+            background-color: #800080; /* Colore di sfondo viola */
+            font-family: Arial, sans-serif; /* Font semplice */
+            color: white; /* Colore del testo bianco per contrastare il viola */
+            text-align: center; /* Allineamento centrale del testo */
+            padding: 50px; /* Spaziatura intorno al contenuto */
+        }
+
+        h1 {
+            font-size: 36px;
+            margin-bottom: 30px;
+        }
+
+        p {
+            font-size: 18px;
+            margin-bottom: 20px;
+        }
+
+        .box-risposta {
+            width: 80%; /* Larghezza della casella */
+            max-width: 500px; /* Larghezza massima della casella */
+            padding: 10px;
+            font-size: 16px;
+            margin-top: 20px;
+            border-radius: 5px; /* Angoli arrotondati */
+            border: 2px solid white; /* Bordo bianco */
+            background-color: #6a006a; /* Colore di sfondo per la box */
+            color: white; /* Colore del testo all'interno della box */
+        }
+
+        .btn-submit {
+            background-color: #4CAF50; /* Colore verde per il bottone */
+            color: white;
+            padding: 10px 20px;
+            font-size: 18px;
+            border: none;
+            border-radius: 5px;
+            margin-top: 20px;
+            cursor: pointer;
+        }
+
+        .btn-submit:hover {
+            background-color: #45a049; /* Colore al passaggio del mouse */
+        }
+        .logo{
+            width: 200px;
+            height: 200px;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>Domanda bonus</h1>
+    <image class="logo" src="logo.png"></image>
+    <p>Rispondete correttamente a questa domanda, facendovi aiutare dagli abitanti del paese, per ottenere le coordinate di un posto bonus!</p>
+    <h2>Come si chiamano gli abitanti di Scafa?</h2>
+    
+    <textarea id="risposta" class="box-risposta" placeholder="Scrivi la tua risposta qui..."></textarea>
+    
+    <button class="btn-submit" onclick="verificaRisposta()">Invia Risposta</button>
+
+    <script>
+        function verificaRisposta() {
+            // Prende il valore della risposta
+            var risposta = document.getElementById("risposta").value.trim().toLowerCase();
+
+            // Verifica se la risposta è corretta
+            if (risposta === "scafesi") {
+                // Se la risposta è corretta, reindirizza alla pagina "BRAVI"
+                window.location.href = "bravi.html"; // Puoi creare una pagina separata "bravi.html"
+            } else {
+                // Se la risposta è errata, mostra un alert con "RISPOSTA ERRATA"
+                alert("RISPOSTA ERRATA");
+            }
+        }
+    </script>
+
+</body>
+</html>
