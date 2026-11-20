@@ -1,6 +1,286 @@
 <!DOCTYPE html>
 <html lang="it">
 <head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>L'Impostore</title>
+<script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
+<style>
+  :root { --bg:#14161f; --card:#1f2330; --accent:#ff4d6d; --text:#f2f3f7; --muted:#8b90a3; --ok:#3ddc97; }
+  * { box-sizing:border-box; }
+  body { margin:0; min-height:100vh; background:var(--bg); color:var(--text);
+         font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;
+         display:flex; align-items:center; justify-content:center; padding:16px; }
+  .card { background:var(--card); border-radius:18px; padding:28px 22px; width:100%; max-width:440px;
+          box-shadow:0 10px 40px rgba(0,0,0,.4); text-align:center; }
+  h1 { margin:0 0 8px; font-size:1.6rem; }
+  h2 { margin:0 0 16px; font-size:1.25rem; }
+  p { color:var(--muted); margin:8px 0 18px; }
+  button { width:100%; padding:14px; margin:6px 0; border:0; border-radius:12px; font-size:1.05rem;
+           font-weight:600; background:var(--accent); color:#fff; cursor:pointer; }
+  button.secondary { background:#2e3347; }
+  button:disabled { opacity:.4; cursor:not-allowed; }
+  input { width:100%; padding:14px; margin:6px 0; border-radius:12px; border:2px solid #2e3347;
+          background:#14161f; color:var(--text); font-size:1.05rem; text-align:center; }
+  input:focus { outline:none; border-color:var(--accent); }
+  .err { color:var(--accent); min-height:1.2em; margin:6px 0; font-size:.95rem; }
+  .players { display:flex; flex-direction:column; gap:8px; margin:12px 0; }
+  .player { padding:14px; border-radius:12px; background:#2e3347; cursor:pointer; font-size:1.05rem;
+            border:2px solid transparent; }
+  .player.sel { border-color:var(--accent); background:#3b2a37; }
+  .empty { color:var(--muted); padding:14px; }
+  .big { font-size:2.2rem; font-weight:800; margin:20px 0; word-break:break-word; }
+  .big.imp { color:var(--accent); }
+  .big.word { color:var(--ok); }
+  .row { text-align:left; background:#2e3347; border-radius:12px; padding:14px; margin:8px 0; }
+  .row small { color:var(--muted); display:block; font-size:.8rem; text-transform:uppercase; letter-spacing:.05em; }
+  .row b { font-size:1.3rem; }
+  .hidden { display:none; }
+</style>
+</head>
+<body>
+
+<!-- Scelta ruolo -->
+<div id="s-role" class="card">
+  <h1>🕵️ L'Impostore</h1>
+  <p>Sei giocatore o organizzatore?</p>
+  <button id="b-player">Giocatore</button>
+  <button id="b-host" class="secondary">Organizzatore</button>
+</div>
+
+<!-- Organizzatore: codice -->
+<div id="s-code" class="card hidden">
+  <h2>Codice organizzatore</h2>
+  <input id="i-code" type="password" placeholder="Inserisci il codice" autocomplete="off">
+  <div id="e-code" class="err"></div>
+  <button id="b-code-ok">Entra</button>
+  <button class="secondary" data-back>Indietro</button>
+</div>
+
+<!-- Giocatore: nome -->
+<div id="s-name" class="card hidden">
+  <h2>Come ti chiami?</h2>
+  <input id="i-name" type="text" placeholder="Il tuo nome" maxlength="20" autocomplete="off">
+  <div id="e-name" class="err"></div>
+  <button id="b-name-ok">Entra nella partita</button>
+  <button class="secondary" data-back>Indietro</button>
+</div>
+
+<!-- Giocatore: attesa -->
+<div id="s-wait" class="card hidden">
+  <h2 id="t-wait">In attesa…</h2>
+  <p id="p-wait">Aspetta che l'organizzatore avvii il round.</p>
+</div>
+
+<!-- Giocatore: risultato -->
+<div id="s-result" class="card hidden">
+  <div id="r-label"></div>
+  <div id="r-big" class="big"></div>
+  <p id="r-hint"></p>
+</div>
+
+<!-- Organizzatore: scelta impostore e parola -->
+<div id="s-setup" class="card hidden">
+  <h2>Giocatori connessi (<span id="n-players">0</span>)</h2>
+  <p>Tocca un giocatore per sceglierlo come impostore.</p>
+  <div id="players" class="players"></div>
+  <input id="i-word" type="text" placeholder="Parola da indovinare" autocomplete="off">
+  <div id="e-setup" class="err"></div>
+  <button id="b-start">Avvia round</button>
+</div>
+
+<!-- Organizzatore: riepilogo -->
+<div id="s-summary" class="card hidden">
+  <h2>Round in corso</h2>
+  <div class="row"><small>L'impostore è</small><b id="o-imp"></b></div>
+  <div class="row"><small>La parola è</small><b id="o-word"></b></div>
+  <div class="row"><small>A iniziare sarà</small><b id="o-first"></b></div>
+  <button id="b-new">Nuovo round</button>
+</div>
+
+<script>
+const HOST_CODE = "pisellino";
+// ID fisso con cui l'organizzatore si registra sul server di segnalazione PeerJS.
+const HOST_ID = "impostore-game-pisellino-7f3a9c";
+
+const $ = id => document.getElementById(id);
+const screens = ["s-role","s-code","s-name","s-wait","s-result","s-setup","s-summary"];
+function show(id){ screens.forEach(s => $(s).classList.toggle("hidden", s !== id)); }
+
+document.querySelectorAll("[data-back]").forEach(b => b.onclick = () => show("s-role"));
+$("b-host").onclick = () => { $("e-code").textContent=""; $("i-code").value=""; show("s-code"); };
+$("b-player").onclick = () => { $("e-name").textContent=""; show("s-name"); };
+
+/* ================= ORGANIZZATORE ================= */
+let hostPeer = null;
+let players = [];      // {name, conn}
+let selected = null;   // nome impostore
+
+$("b-code-ok").onclick = startHost;
+$("i-code").addEventListener("keydown", e => { if(e.key==="Enter") startHost(); });
+
+function startHost(){
+  if ($("i-code").value.trim().toLowerCase() !== HOST_CODE){
+    $("e-code").textContent = "Codice errato";
+    return;
+  }
+  $("e-code").textContent = "Connessione…";
+  hostPeer = new Peer(HOST_ID);
+  hostPeer.on("open", () => { renderPlayers(); show("s-setup"); });
+  hostPeer.on("error", err => {
+    $("e-code").textContent = err.type === "unavailable-id"
+      ? "Un altro organizzatore è già connesso con questo codice."
+      : "Errore di connessione: " + err.type;
+    show("s-code");
+  });
+  hostPeer.on("connection", conn => {
+    conn.on("data", msg => {
+      if (msg && msg.type === "join") handleJoin(conn, String(msg.name||"").trim().slice(0,20));
+    });
+    conn.on("close", () => {
+      players = players.filter(p => p.conn !== conn);
+      if (selected && !players.some(p => p.name === selected)) selected = null;
+      renderPlayers();
+    });
+  });
+}
+
+function handleJoin(conn, name){
+  if (!name){ conn.send({type:"error", text:"Nome non valido"}); return; }
+  if (players.some(p => p.name.toLowerCase() === name.toLowerCase())){
+    conn.send({type:"error", text:"Nome già in uso, scegline un altro"});
+    return;
+  }
+  players.push({name, conn});
+  conn.send({type:"joined"});
+  renderPlayers();
+}
+
+function renderPlayers(){
+  $("n-players").textContent = players.length;
+  const box = $("players");
+  box.innerHTML = "";
+  if (!players.length){
+    const d = document.createElement("div");
+    d.className = "empty";
+    d.textContent = "Nessun giocatore ancora…";
+    box.appendChild(d);
+    return;
+  }
+  players.forEach(p => {
+    const d = document.createElement("div");
+    d.className = "player" + (p.name === selected ? " sel" : "");
+    d.textContent = (p.name === selected ? "🕵️ " : "") + p.name;
+    d.onclick = () => { selected = p.name; renderPlayers(); };
+    box.appendChild(d);
+  });
+}
+
+$("b-start").onclick = () => {
+  const word = $("i-word").value.trim();
+  const err = $("e-setup");
+  if (players.length < 3){ err.textContent = "Servono almeno 3 giocatori."; return; }
+  if (!selected){ err.textContent = "Scegli l'impostore."; return; }
+  if (!word){ err.textContent = "Inserisci la parola."; return; }
+  err.textContent = "";
+
+  const others = players.filter(p => p.name !== selected);
+  const first = others[Math.floor(Math.random()*others.length)].name;
+
+  players.forEach(p => {
+    try {
+      if (p.name === selected) p.conn.send({type:"role", role:"impostor"});
+      else p.conn.send({type:"role", role:"player", word});
+    } catch(e){}
+  });
+
+  $("o-imp").textContent = selected;
+  $("o-word").textContent = word;
+  $("o-first").textContent = first;
+  show("s-summary");
+};
+
+$("b-new").onclick = () => {
+  players.forEach(p => { try{ p.conn.send({type:"reset"}); }catch(e){} });
+  selected = null;
+  $("i-word").value = "";
+  renderPlayers();
+  show("s-setup");
+};
+
+/* ================= GIOCATORE ================= */
+let playerPeer = null, myConn = null;
+
+$("b-name-ok").onclick = joinGame;
+$("i-name").addEventListener("keydown", e => { if(e.key==="Enter") joinGame(); });
+
+function joinGame(){
+  const name = $("i-name").value.trim();
+  if (!name){ $("e-name").textContent = "Inserisci il tuo nome"; return; }
+  $("e-name").textContent = "Connessione…";
+  $("b-name-ok").disabled = true;
+
+  if (playerPeer) { try{ playerPeer.destroy(); }catch(e){} }
+  playerPeer = new Peer();
+
+  const fail = text => {
+    $("e-name").textContent = text;
+    $("b-name-ok").disabled = false;
+    show("s-name");
+  };
+
+  playerPeer.on("error", err => {
+    fail(err.type === "peer-unavailable"
+      ? "L'organizzatore non è ancora connesso. Riprova tra poco."
+      : "Errore di connessione: " + err.type);
+  });
+
+  playerPeer.on("open", () => {
+    myConn = playerPeer.connect(HOST_ID, {reliable:true});
+    myConn.on("open", () => myConn.send({type:"join", name}));
+    myConn.on("data", msg => {
+      if (msg.type === "error") { fail(msg.text); try{ myConn.close(); }catch(e){} }
+      else if (msg.type === "joined") {
+        $("b-name-ok").disabled = false;
+        $("t-wait").textContent = "Ciao " + name + "!";
+        $("p-wait").textContent = "Aspetta che l'organizzatore avvii il round.";
+        show("s-wait");
+      }
+      else if (msg.type === "role") showRole(msg);
+      else if (msg.type === "reset") {
+        $("t-wait").textContent = "Nuovo round";
+        $("p-wait").textContent = "Aspetta che l'organizzatore avvii il round.";
+        show("s-wait");
+      }
+    });
+    myConn.on("close", () => {
+      $("t-wait").textContent = "Disconnesso";
+      $("p-wait").textContent = "Connessione con l'organizzatore persa. Ricarica la pagina per rientrare.";
+      show("s-wait");
+    });
+  });
+}
+
+function showRole(msg){
+  const big = $("r-big");
+  if (msg.role === "impostor"){
+    $("r-label").textContent = "";
+    big.textContent = "Sei l'impostore 🕵️";
+    big.className = "big imp";
+    $("r-hint").textContent = "Non conosci la parola. Cerca di non farti scoprire!";
+  } else {
+    $("r-label").textContent = "La parola è";
+    big.textContent = msg.word;
+    big.className = "big word";
+    $("r-hint").textContent = "Non dirla ad alta voce: scopri chi è l'impostore!";
+  }
+  show("s-result");
+}
+</script>
+</body>
+</html><!DOCTYPE html>
+<html lang="it">
+<head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Centralino del Mistero – Cena con Delitto</title>
